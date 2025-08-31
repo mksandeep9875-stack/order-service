@@ -6,7 +6,8 @@ import lombok.Setter;
 
 import java.util.Map;
 
-@Getter @Setter
+@Getter
+@Setter
 public class OrderDatum {
 
     private String orderId;

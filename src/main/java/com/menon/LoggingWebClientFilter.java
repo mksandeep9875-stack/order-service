@@ -12,7 +12,6 @@ public class LoggingWebClientFilter implements ExchangeFilterFunction {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingWebClientFilter.class);
 
-
     @Override
     public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
         logRequestHeaders(request);
@@ -21,7 +20,7 @@ public class LoggingWebClientFilter implements ExchangeFilterFunction {
 
     private void logRequestHeaders(ClientRequest request) {
         request.headers().forEach((name, values) -> {
-            log.info("Outgoing Request Header: "+name + ": " + values);
+            log.info("Outgoing Request Header: " + name + ": " + values);
         });
     }
 }

@@ -5,9 +5,11 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
-@Getter @Setter
+@Getter
+@Setter
 public class PaymentRequest {
 
+    private String customerPhone;
     private String orderId;
     private BigDecimal amount;
     private String currency;

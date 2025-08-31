@@ -10,9 +10,9 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Document(collection = "orders")
-@Getter @Setter
-public class Order
-{
+@Getter
+@Setter
+public class Order {
 
     @Id
     private String orderId;           // Unique order identifier

@@ -8,27 +8,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
-public class CustomerService
-{
+public class CustomerService {
     private static final Logger log = LoggerFactory.getLogger(CustomerService.class);
 
     @Autowired
     @Qualifier("customer-service-validate")
     WebClient webClient;
 
-    public boolean validateToken(String token) {
-
-
-        log.info("Validating token within the AuthService: {}", token);
-        log.info("Sending request to auth service to validate token: {}", token);
+    public boolean validateToken(String token, String customerPhone) {
+        log.info("Validating token within the CustomerService for order-service: {}", token);
 
         Principal authResponse = webClient.get()
                 .header("Authorization", token)
                 .retrieve()
                 .bodyToMono(Principal.class)
-                .block(); // Thread is Blocked until the response is received | SYNC
+                .block();
 
         log.info("Response from auth service: {}", authResponse);
-        return authResponse.getState().equalsIgnoreCase("valid");
+        return authResponse.getUsername().equalsIgnoreCase(customerPhone) && authResponse.getState().equalsIgnoreCase("valid");
     }
 }

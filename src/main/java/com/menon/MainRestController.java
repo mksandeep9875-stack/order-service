@@ -11,7 +11,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -35,8 +34,7 @@ public class MainRestController {
     Producer producer;
 
     @GetMapping("get/details/{orderid}")
-    public ResponseEntity<?> getOrder(@PathVariable("orderid") String orderid)
-    {
+    public ResponseEntity<?> getOrder(@PathVariable("orderid") String orderid) {
         Order order = orderRepository.findById(orderid).get();
         return ResponseEntity.ok(order);
     }
@@ -51,13 +49,12 @@ public class MainRestController {
         // COOKIE VALIDATION LOGIC
         List<Cookie> cookieList = getCookies(request);
         log.info("cookie check complete");
-        if( cookieList.stream().filter(cookie -> cookie.getName().equals("order-service-stage-1")).findAny().isEmpty()) // COOKIE_CHECK
+        if (cookieList.stream().filter(cookie -> cookie.getName().equals("order-service-stage-1")).findAny().isEmpty()) // COOKIE_CHECK
         {
             log.info("Received request to create order, no cookie present: {}", order);
-            if(customerService.validateToken(token))
-            {
+            if (customerService.validateToken(token, order.getCustomerPhone())) {
                 // first check if the products are available in inventory
-                if(inventoryService.checkInventoryAvailability(order.getProductsItems(), token)){
+                if (inventoryService.checkInventoryAvailability(order.getProductsItems(), token)) {
                     log.info("Products are available in inventory: {}", order.getProductsItems());
                 } else {
                     log.info("Products are not available in inventory: {}", order.getProductsItems());
@@ -68,7 +65,7 @@ public class MainRestController {
                 order.setOrderId("ORDER-" + new Random().nextInt(1000000));
                 order.setStatus("PROCESSING");
                 producer.publishOrderDatum(order.getOrderId(),
-                                                "CREATE",
+                        "CREATE",
                         "Order Created Successfully with Order ID: " + order.getOrderId(),
                         "PROCESSING",
                         "PAYMENT ID PENDING",
@@ -82,7 +79,7 @@ public class MainRestController {
 
                 log.info("Sending request to Payment Service");
                 // create payment
-                String responseKey = paymentService.createPayment(paymentRequest, token, order.getProductsItems());
+                String responseKey = paymentService.createPayment(paymentRequest, order.getCustomerPhone(), token, order.getProductsItems());
                 log.info("Received the ResponseKey which will be sent as a Cookie to the Front-end");
 
                 log.info("Setting up the Cookie for the Front-end");
@@ -94,73 +91,56 @@ public class MainRestController {
                 log.info("Cookie added to the outgoing response");
                 log.info("Order created successfully: {} and request forwarded to Payment Service", order);
                 return ResponseEntity.ok("STAGE 1: We have started processing your Order with Order ID: " + order.getOrderId() + ". Please wait for the payment to be completed.");
-            }
-            else
-            {
+            } else {
                 log.info("Token is invalid: {}", token);
                 return ResponseEntity.badRequest().body("Invalid token");
             }
 
 
-        }
-        else
-        {
+        } else {
 
             // FOLLOW UP LOGIC
             log.info("found a relevant cookie.. initiating follow up logic");
 
-            Cookie followup_cookie =  cookieList.stream().
+            Cookie followup_cookie = cookieList.stream().
                     filter(cookie -> cookie.getName().equals("order-service-stage-1")).findAny().get();
 
             String followup_cookie_key = followup_cookie.getValue();
-            String cacheResponse = (String)redisTemplate.opsForValue().get(followup_cookie_key);
+            String cacheResponse = (String) redisTemplate.opsForValue().get(followup_cookie_key);
             log.info("cacheResponse from cookie/redis cache: {}", cacheResponse);
 
             String[] cacheResponseArray = cacheResponse.split(" ");
 
-            if(cacheResponseArray[0].equals("stage1"))
-            {
+            if (cacheResponseArray[0].equals("stage1")) {
                 log.info("Request still under process...");
 
                 return ResponseEntity.ok("Request still under process...");
-            }
-            else if(cacheResponseArray[0].equals("paymentId:orderId"))
-            {
+            } else if (cacheResponseArray[0].equals("paymentId:orderId")) {
                 String[] parts = cacheResponseArray[1].split(":");
                 return ResponseEntity.ok("Order Created Successfully with Order ID: " + parts[1] + " and Payment ID: " + parts[0]);
-            }
-            else
-            {
+            } else {
                 return ResponseEntity.ok("Error Processing the Order");
             }
-
-
         }
-
     }
 
     private static PaymentRequest createPaymentRequest(Order order) {
         PaymentRequest paymentRequest = new PaymentRequest();
         paymentRequest.setOrderId(order.getOrderId());
-        //paymentRequest.setAmount(menuService.calculateOrder(order));
-        paymentRequest.setAmount(BigDecimal.TEN);
+        paymentRequest.setCustomerPhone(order.getCustomerPhone());
+        paymentRequest.setAmount(order.getTotalPrice());
+        paymentRequest.setCurrency(order.getCurrency());
         log.info("Payment Request created successfully: {}", paymentRequest);
         return paymentRequest;
     }
 
     private List<Cookie> getCookies(HttpServletRequest request) {
-        List<Cookie> cookieList = null;
-        log.info("initiating cookie check");
-
-        //Optional<String> healthStatusCookie = Optional.ofNullable(request.getHeader("health_status_cookie"));
+        List<Cookie> cookieList;
+        log.info("initiating cookie check for order-service");
         Cookie[] cookies = request.getCookies();
-        if(cookies == null)
-        {
+        if (cookies == null) {
             cookieList = new ArrayList<>();
-        }
-        else
-        {
-            // REFACTOR TO TAKE NULL VALUES INTO ACCOUNT
+        } else {
             cookieList = List.of(cookies);
         }
         return cookieList;

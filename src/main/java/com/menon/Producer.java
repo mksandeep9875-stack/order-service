@@ -14,13 +14,12 @@ import java.util.Map;
 
 
 @Service
-public class Producer
-{
+public class Producer {
     private static final Logger logger = LoggerFactory.getLogger(Producer.class);
     private static final String TOPIC = "order-events";
 
     @Autowired //DEPENDENCY INJECTION PROMISE FULFILLED AT RUNTIME
-    private KafkaTemplate<String, String> kafkaTemplate ;
+    private KafkaTemplate<String, String> kafkaTemplate;
     @Qualifier("payment-service-create-payment")
     @Autowired
     private WebClient payment;
@@ -29,12 +28,11 @@ public class Producer
                                   String type,
                                   String description,
                                   String status,
-                                  String paymentId, Map<String, Integer> productsItems) throws JsonProcessingException
-    {
+                                  String paymentId, Map<String, Integer> productsItems) throws JsonProcessingException {
         OrderDatum orderDatum = getOrderDatum(orderId, type, description, status, paymentId, productsItems);
 
         ObjectMapper objectMapper = new ObjectMapper();
-        String datum =  objectMapper.writeValueAsString(orderDatum);
+        String datum = objectMapper.writeValueAsString(orderDatum);
         logger.info(String.format("#### -> Producing message, order-events -> %s", datum));
         this.kafkaTemplate.send(TOPIC, datum);
     }

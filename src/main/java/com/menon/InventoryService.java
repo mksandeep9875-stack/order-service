@@ -19,8 +19,7 @@ public class InventoryService {
     @Qualifier("inventory-service-check-availability")
     WebClient webClient;
 
-    public boolean checkInventoryAvailability(Map<String, Integer> productsItems, String token)
-    {
+    public boolean checkInventoryAvailability(Map<String, Integer> productsItems, String token) {
 
         String products = productsItems.values().stream()
                 .map(String::valueOf)
@@ -28,7 +27,6 @@ public class InventoryService {
                 .orElse("");
 
         log.info("Triggering inventory call from order to check product availability for products: {}", products);
-        // Thread is Blocked until the response is received | SYNC
 
         return Boolean.TRUE.equals(webClient.post()
                 .header("Authorization", token)
